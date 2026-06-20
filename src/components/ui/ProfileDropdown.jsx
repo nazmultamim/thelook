@@ -15,11 +15,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signOut } from "@/app/actions/auth";
 
-const menuItems = [
-    { icon: LayoutDashboard, label: "Dashboard", href: "/user/dashboard" },
-    { icon: Package, label: "My Orders", href: "/orders" },
-    { icon: MapPin, label: "Track Order", href: "/track-order" },
-];
+
 
 function Avatar({ name, size = "sm" }) {
     const initials = name
@@ -43,6 +39,15 @@ export default function ProfileDropdown({ onNavigateLogin, onNavigateSignup }) {
 
     // ── Correct destructuring from AuthProvider ──────────────────────────────
     const { user, setSession, isLoggedIn, role, isAdmin } = useAuth();
+
+    const menuItems = [
+        {
+            icon: LayoutDashboard, label: "Dashboard",
+            href: isAdmin ? "/admin/dashboard" : "/user/dashboard"
+        },
+        { icon: Package, label: "My Orders", href: "/orders" },
+        { icon: MapPin, label: "Track Order", href: "/track-order" },
+    ];
 
     const displayName = user?.user_metadata?.full_name || user?.email || "User";
     const firstName = displayName.split(" ")[0];
@@ -99,7 +104,7 @@ export default function ProfileDropdown({ onNavigateLogin, onNavigateSignup }) {
                                         : 'bg-orange-100 text-orange-700'
                                         }`}>
                                         {role === 'super_admin' ? 'Super Admin' : 'Admin'}
-                                    
+
                                     </span>
                                 )}
                             </div>
@@ -118,18 +123,6 @@ export default function ProfileDropdown({ onNavigateLogin, onNavigateSignup }) {
                                     <ChevronRight size={13} className="text-[#d4c4b8] group-hover:text-[#d97845] transition-colors" />
                                 </Link>
                             ))}
-
-                            {/* Admin link — only for admin/super_admin */}
-                            {isAdmin && (
-                                <Link
-                                    href="/admin/dashboard"
-                                    className="flex items-center gap-3 px-5 py-2.5 no-underline text-[#d97845] text-[13.5px] font-semibold group hover:bg-[#fdf0e6] transition-colors"
-                                >
-                                    <LayoutDashboard size={15} className="shrink-0" />
-                                    <span className="flex-1">Admin Dashboard</span>
-                                    <ChevronRight size={13} className="text-[#d4c4b8] group-hover:text-[#d97845] transition-colors" />
-                                </Link>
-                            )}
                         </div>
 
                         {/* Logout */}

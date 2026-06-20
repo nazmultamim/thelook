@@ -1,6 +1,7 @@
 'use client';
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, BarChart3, FileText, Package2, ShoppingCart,
   Layers, Users, Megaphone, Tag, Settings, LifeBuoy
@@ -10,37 +11,49 @@ const NAV_SECTIONS = [
   {
     label: "Main",
     items: [
-      { id: "dashboard",  icon: LayoutDashboard, label: "Dashboard",   badge: null, href: "/admin" },
-      { id: "analytics",  icon: BarChart3,       label: "Analytics",   badge: null, href: "/admin/analytics" },
-      { id: "reports",    icon: FileText,         label: "Reports",     badge: "New", href: "/admin/reports" },
+      { id: "dashboard",  icon: LayoutDashboard, label: "Dashboard",   badge: null, href: "/admin/dashboard" },
+      { id: "analytics",  icon: BarChart3,       label: "Analytics",   badge: null, href: "/admin/dashboard/analytics" },
+      { id: "reports",    icon: FileText,         label: "Reports",     badge: "New", href: "/admin/dashboard/reports" },
     ],
   },
   {
     label: "Store",
     items: [
-      { id: "products",   icon: Package2,        label: "Products",    badge: "248", href: "/admin/products" },
-      { id: "orders",     icon: ShoppingCart,    label: "Orders",      badge: "12", href: "/admin/orders" },
-      { id: "inventory",  icon: Layers,           label: "Inventory",   badge: null, href: "/admin/inventory" },
-      { id: "customers",  icon: Users,            label: "Customers",   badge: null, href: "/admin/customers" },
+      { id: "products",   icon: Package2,        label: "Products",    badge: "248", href: "/admin/dashboard/products" },
+      { id: "orders",     icon: ShoppingCart,    label: "Orders",      badge: "12", href: "/admin/dashboard/orders" },
+      { id: "inventory",  icon: Layers,           label: "Inventory",   badge: null, href: "/admin/dashboard/inventory" },
+      { id: "customers",  icon: Users,            label: "Customers",   badge: null, href: "/admin/dashboard/customers" },
     ],
   },
   {
     label: "Marketing",
     items: [
-      { id: "campaigns",  icon: Megaphone,        label: "Campaigns",   badge: null, href: "/admin/campaigns" },
-      { id: "promotions", icon: Tag,              label: "Promotions",  badge: "3", href: "/admin/promotions" },
+      { id: "campaigns",  icon: Megaphone,        label: "Campaigns",   badge: null, href: "/admin/dashboard/campaigns" },
+      { id: "promotions", icon: Tag,              label: "Promotions",  badge: "3", href: "/admin/dashboard/promotions" },
     ],
   },
   {
     label: "System",
     items: [
-      { id: "settings",   icon: Settings,         label: "Settings",    badge: null, href: "/admin/settings" },
-      { id: "support",    icon: LifeBuoy,         label: "Support",     badge: null, href: "/admin/support" },
+      { id: "settings",   icon: Settings,         label: "Settings",    badge: null, href: "/admin/dashboard/settings" },
+      { id: "support",    icon: LifeBuoy,         label: "Support",     badge: null, href: "/admin/dashboard/support" },
     ],
   },
 ];
 
-export default function Sidebar({ open, collapsed, onClose, active, setActive }) {
+const normalizePath = (path) => {
+  if (!path) return "/";
+  return path.length > 1 ? path.replace(/\/+$/, "") : path;
+};
+
+const isActiveHref = (pathname, href) => {
+  const current = normalizePath(pathname);
+  const target = normalizePath(href);
+  return current === target || current.startsWith(`${target}/`);
+};
+
+export default function Sidebar({ open, collapsed, onClose }) {
+  const pathname = usePathname();
   const W_FULL = 256;
   const W_MINI = 68;
 
@@ -80,12 +93,11 @@ export default function Sidebar({ open, collapsed, onClose, active, setActive })
               {collapsed && <div className="my-2 mx-3 border-t border-white/[0.07]" />}
 
               {section.items.map(item => {
-                const isActive = active === item.id;
+                const isActive = isActiveHref(pathname, item.href);
                 return (
                   <Link
                     key={item.id}
                     href={item.href}
-                    onClick={() => setActive(item.id)}
                     title={collapsed ? item.label : undefined}
                     className={`w-full flex items-center gap-3 px-3.5 py-2.5 mx-1 rounded-xl border-none cursor-pointer transition-all duration-150 text-left group relative mb-0.5
                       ${isActive

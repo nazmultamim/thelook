@@ -12,7 +12,7 @@ const NOTIFS = [
     { text: "Campaign 'Summer Sale' is live", time: "3 hrs ago", dot: "#4a7ab8" },
 ];
 
-export default function TopBar({ sidebarOpen, sidebarCollapsed, onToggleSidebar, onGoToShop }) {
+export default function TopBar({ sidebarOpen, sidebarCollapsed, onToggleSidebar, onGoToShop, sectionLabel = "Dashboard" }) {
     const [notifOpen, setNotifOpen] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
     const [searchVal, setSearchVal] = useState("");
@@ -48,7 +48,7 @@ export default function TopBar({ sidebarOpen, sidebarCollapsed, onToggleSidebar,
                 <div className="hidden sm:flex items-center gap-1.5 text-[13px]">
                     <span className="text-[#9b8070]">Admin</span>
                     <ChevronRight size={13} className="text-[#c4b0a0]" />
-                    <span className="font-semibold text-[#2c1a0e]">Dashboard</span>
+                    <span className="font-semibold text-[#2c1a0e]">{sectionLabel}</span>
                 </div>
             </div>
 

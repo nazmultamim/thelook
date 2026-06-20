@@ -6,7 +6,6 @@ import { Search, MapPin, Heart, ShoppingBag, Menu } from "lucide-react";
 import MobileSidebar from "./layout/mobile/MobileSidebar";
 import ProfileDropdown from "./ui/ProfileDropdown";
 import Logo from "./ui/logo";
-import { useAuth } from "@/context/AuthProvider";
 
 
 const categories = [
@@ -113,20 +112,13 @@ export default function Navbar({ onNavigateLogin, onNavigateSignup }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
-  const { isAdmin, loading } = useAuth();
-  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-console.log(isAdmin)
   useEffect(() => {
     document.body.style.overflow = sidebarOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [sidebarOpen]);
 
-  if (!mounted) return null;
+
 
   return (
     <>
@@ -159,32 +151,16 @@ console.log(isAdmin)
 
           {/* Desktop Right Icons */}
           <div className="hidden md:flex items-center gap-5">
-            {loading ? (
-              <>
-                <div className="w-[150px] h-[40px] bg-[#f1e5dc] rounded-xl animate-pulse" />
-              </>
-            ) : isAdmin ? (
-              <a
-                href="/admin/dashboard"
-                className="px-4 py-2.5 rounded-xl bg-[#d97845] text-white text-[13px] font-semibold 
-                       hover:bg-[#b8622f] transition-all duration-200 shadow-sm hover:shadow-md"
-              >
-                Admin Dashboard
-              </a>
-            ) : (
-              <>
-                <IconBtn icon={<MapPin size={20} />} label="Stores" href="/stores" />
 
-                <ProfileDropdown
-                  onNavigateLogin={onNavigateLogin}
-                  onNavigateSignup={onNavigateSignup}
-                />
+            <IconBtn icon={<MapPin size={20} />} label="Stores" href="/stores" />
 
-                <IconBtn icon={<Heart size={20} />} label="Wishlist" href="/wishlist" />
-                <IconBtn icon={<ShoppingBag size={20} />} label="Bag" href="/bag" />
-              </>
-            )}
+            <ProfileDropdown
+              onNavigateLogin={onNavigateLogin}
+              onNavigateSignup={onNavigateSignup}
+            />
 
+            <IconBtn icon={<Heart size={20} />} label="Wishlist" href="/wishlist" />
+            <IconBtn icon={<ShoppingBag size={20} />} label="Bag" href="/bag" />
           </div>
 
           {/* Mobile Controls */}
