@@ -1,0 +1,285 @@
+-- ============================================================
+-- FINELIFE / THELOOK — SUPABASE COMPLETE SQL SETUP
+-- Run in order, top to bottom in Supabase SQL Editor
+-- ============================================================
+
+
+-- ============================================================
+-- STEP 1: ENUM
+-- ============================================================
+
+drop type if exists user_role cascade;
+create type user_role as enum ('super_admin', 'admin', 'customer');
+
+
+-- ============================================================
+-- STEP 2: PROFILES TABLE
+-- ============================================================
+
+drop table if exists profiles cascade;
+
+create table profiles (
+  id          uuid primary key,
+  full_name   text,
+  email       text unique,
+  phone       text,
+  role        user_role not null default 'customer',
+  created_at  timestamptz default now()
+);
+
+-- Cascade: deleting auth user auto-deletes their profile
+alter table profiles
+  add constraint profiles_id_fkey
+  foreign key (id)
+  references auth.users(id)
+  on delete cascade;
+
+
+-- ============================================================
+-- STEP 3: TRIGGER — auto-create profile on signup
+-- First ever user becomes super_admin, all others = customer
+-- ============================================================
+
+drop trigger if exists on_auth_user_created on auth.users;
+drop function if exists public.handle_new_user();
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  user_count   int;
+  assigned_role user_role;
+begin
+  select count(*) into user_count from public.profiles;
+
+  if user_count = 0 then
+    assigned_role := 'super_admin';
+  else
+    assigned_role := 'customer';
+  end if;
+
+  insert into public.profiles (id, full_name, email, role)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'full_name', ''),
+    new.email,
+    assigned_role
+  )
+  on conflict (id) do nothing;
+
+  return new;
+
+exception
+  when others then
+    raise warning 'handle_new_user error: % %', sqlerrm, sqlstate;
+    return new;
+end;
+$$;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+
+
+-- ============================================================
+-- STEP 4: TRIGGER — keep email in sync if user updates it
+-- ============================================================
+
+drop trigger if exists on_auth_user_email_updated on auth.users;
+drop function if exists public.handle_user_email_update();
+
+create or replace function public.handle_user_email_update()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.profiles
+  set email = new.email
+  where id = new.id;
+  return new;
+exception
+  when others then
+    raise warning 'handle_user_email_update error: % %', sqlerrm, sqlstate;
+    return new;
+end;
+$$;
+
+create trigger on_auth_user_email_updated
+  after update of email on auth.users
+  for each row execute procedure public.handle_user_email_update();
+
+
+-- ============================================================
+-- STEP 5: JWT HOOK — inject user_role into JWT claims
+-- After running this, go to:
+-- Dashboard → Authentication → Hooks
+-- → Add "Customize Access Token (JWT Claims)" hook
+-- → Type: Postgres, Schema: public
+-- → Function: custom_access_token_hook
+-- ============================================================
+
+drop function if exists public.custom_access_token_hook(jsonb);
+
+create or replace function public.custom_access_token_hook(event jsonb)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  claims    jsonb;
+  user_role text;
+begin
+  select role::text into user_role
+  from public.profiles
+  where id = (event->>'user_id')::uuid;
+
+  claims := event->'claims';
+  claims := jsonb_set(
+    claims,
+    '{user_role}',
+    to_jsonb(coalesce(user_role, 'customer'))
+  );
+  event := jsonb_set(event, '{claims}', claims);
+  return event;
+
+exception
+  when others then
+    raise warning 'custom_access_token_hook error: % %', sqlerrm, sqlstate;
+    return event;
+end;
+$$;
+
+-- Permissions for JWT hook
+grant usage on schema public to supabase_auth_admin;
+grant execute on function public.custom_access_token_hook(jsonb) to supabase_auth_admin;
+revoke execute on function public.custom_access_token_hook(jsonb)
+  from authenticated, anon, public;
+
+
+-- ============================================================
+-- STEP 6: ROW LEVEL SECURITY (RLS)
+-- ============================================================
+
+alter table profiles enable row level security;
+
+-- Drop all old policies first
+drop policy if exists "Users view own profile"         on profiles;
+drop policy if exists "Users update own profile"       on profiles;
+drop policy if exists "Allow insert from trigger"      on profiles;
+drop policy if exists "Admin read profiles"            on profiles;
+drop policy if exists "Super admin full access"        on profiles;
+drop policy if exists "No one can set super_admin role" on profiles;
+
+-- Anyone can insert (needed for trigger)
+create policy "Allow insert from trigger"
+  on profiles for insert
+  with check (true);
+
+-- Users can read their own profile
+create policy "Users view own profile"
+  on profiles for select
+  using (auth.uid() = id);
+
+-- Users can update their own profile (but not role)
+create policy "Users update own profile"
+  on profiles for update
+  using (auth.uid() = id)
+  with check (role = (select role from profiles where id = auth.uid()));
+
+-- Admins and super_admins can read all profiles
+create policy "Admin read all profiles"
+  on profiles for select
+  using (
+    exists (
+      select 1 from profiles
+      where id = auth.uid()
+        and role in ('admin', 'super_admin')
+    )
+  );
+
+-- Only super_admin can update any profile (for role changes)
+create policy "Super admin full access"
+  on profiles for all
+  using (
+    exists (
+      select 1 from profiles
+      where id = auth.uid()
+        and role = 'super_admin'
+    )
+  );
+
+-- Nobody can set role to super_admin except existing super_admin
+create policy "Protect super_admin role"
+  on profiles for update
+  using (true)
+  with check (
+    role != 'super_admin'
+    or (select role from profiles where id = auth.uid()) = 'super_admin'
+  );
+
+
+-- ============================================================
+-- STEP 7: SEARCH — enable fast product title search
+-- ============================================================
+
+create extension if not exists pg_trgm;
+create index if not exists idx_products_title_trgm
+  on products using gin (title gin_trgm_ops);
+create index if not exists idx_products_description_trgm
+  on products using gin (description gin_trgm_ops);
+
+
+-- ============================================================
+-- STEP 8: CLEANUP — remove orphaned profiles
+-- Run this if you deleted users from auth.users manually
+-- and are getting duplicate email errors on signup
+-- ============================================================
+
+delete from profiles
+where id not in (select id from auth.users);
+
+
+-- ============================================================
+-- STEP 9: VERIFY SETUP
+-- ============================================================
+
+-- Check trigger exists
+select trigger_name, event_manipulation
+from information_schema.triggers
+where trigger_name in (
+  'on_auth_user_created',
+  'on_auth_user_email_updated'
+);
+
+-- Check JWT hook function exists
+select routine_name, routine_schema
+from information_schema.routines
+where routine_name = 'custom_access_token_hook';
+
+-- Check hook permissions
+select grantee, privilege_type
+from information_schema.routine_privileges
+where routine_name = 'custom_access_token_hook';
+
+-- Check profiles table structure
+select column_name, data_type, is_nullable, column_default
+from information_schema.columns
+where table_name = 'profiles'
+order by ordinal_position;
+
+-- Check enum values
+select enum_range(null::user_role);
+-- Expected: {super_admin,admin,customer}
+
+-- Check for orphaned profiles
+select p.id, p.email, p.role
+from profiles p
+left join auth.users u on u.id = p.id
+where u.id is null;
