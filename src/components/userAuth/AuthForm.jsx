@@ -14,15 +14,14 @@ function InputField({ label, type = "text", icon: Icon, value, onChange, placeho
 
     return (
         <div className="relative">
-            <div className={`flex items-center gap-3 border rounded-xl px-4 py-3.5 bg-white transition-all duration-200 ${
-                error
+            <div className={`flex items-center gap-3 border rounded-xl px-4 py-3.5 bg-white transition-all duration-200 ${error
                     ? "border-red-400 shadow-[0_0_0_3px_rgba(239,68,68,0.12)]"
                     : focused
                         ? "border-[#d97845] shadow-[0_0_0_3px_rgba(217,120,69,0.14)]"
                         : hasValue
                             ? "border-[#c8a990]"
                             : "border-[#e8d9cc]"
-            }`}>
+                }`}>
                 {Icon && (
                     <Icon
                         size={17}
@@ -30,11 +29,10 @@ function InputField({ label, type = "text", icon: Icon, value, onChange, placeho
                     />
                 )}
                 <div className="flex-1 relative">
-                    <label className={`absolute left-0 transition-all duration-200 pointer-events-none select-none ${
-                        focused || hasValue
+                    <label className={`absolute left-0 transition-all duration-200 pointer-events-none select-none ${focused || hasValue
                             ? "text-[10px] top-0 text-[#d97845] font-semibold tracking-wide"
                             : "text-sm top-[9px] text-[#b8a090]"
-                    }`}>
+                        }`}>
                         {label}
                     </label>
                     <input
@@ -153,13 +151,16 @@ export default function AuthForm({ mode = "signin" }) {
                     password: form.password,
                     next: searchParams.get("next") || "",
                 });
-                if (result?.error) setServerError(result.error);
-                else if (result?.redirectTo) {
+                if (result?.error) {
+                    setServerError(result.error);
+                } else if (result?.redirectTo) {
                     if (result.session) {
-                        setSession(result.session);
+                        // Hydrate the browser client BEFORE navigating, so the
+                        // destination page's role-gated UI is correct immediately
+                        // instead of waiting for a manual refresh to catch up.
+                        await setSession(result.session);
                     }
                     router.replace(result.redirectTo);
-                    router.refresh();
                 }
             }
         } catch {
@@ -281,11 +282,10 @@ export default function AuthForm({ mode = "signin" }) {
                                         <label className="flex items-start gap-3 cursor-pointer select-none">
                                             <div
                                                 onClick={() => setForm((p) => ({ ...p, agreed: !p.agreed }))}
-                                                className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
-                                                    form.agreed
+                                                className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors cursor-pointer ${form.agreed
                                                         ? "bg-[#d97845] border-[#d97845]"
                                                         : "bg-white border-[#e0cdc0]"
-                                                }`}
+                                                    }`}
                                             >
                                                 {form.agreed && (
                                                     <Check size={12} className="text-white" strokeWidth={3} />
@@ -319,11 +319,10 @@ export default function AuthForm({ mode = "signin" }) {
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className={`mt-1 w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-[15px] text-white border-none cursor-pointer transition-all duration-200 ${
-                                        loading
+                                    className={`mt-1 w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-[15px] text-white border-none cursor-pointer transition-all duration-200 ${loading
                                             ? "bg-[#e8a070] cursor-not-allowed"
                                             : "bg-[#d97845] hover:bg-[#b8622f] shadow-[0_4px_14px_rgba(217,120,69,0.38)] hover:shadow-[0_4px_18px_rgba(217,120,69,0.50)] active:scale-[0.98]"
-                                    }`}
+                                        }`}
                                 >
                                     {loading ? (
                                         <>

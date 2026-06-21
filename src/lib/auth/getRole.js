@@ -1,10 +1,17 @@
+export const ROLES = {
+  SUPER_ADMIN: 'super_admin',
+  ADMIN: 'admin',
+  CUSTOMER: 'user', // matches the DB enum value — DB says 'user', not 'customer'
+}
+
 /**
- * Reads user_role from the already-decoded JWT via supabase session.
- * Zero DB call when the claim is present.
+ * Reads user_role from the verified JWT claims via getClaims().
+ * Zero DB call once the access-token hook is confirmed working.
  */
-export function getRoleFromSession(session) {
-  if (!session?.access_token) return null
-  return session.user?.user_role ?? session.user?.app_metadata?.user_role ?? null
+export async function getRoleFromClaims(supabase) {
+  const { data, error } = await supabase.auth.getClaims()
+  if (error || !data?.claims) return null
+  return data.claims.user_role ?? null
 }
 
 export async function getRoleFromProfile(supabase, userId) {
@@ -21,18 +28,14 @@ export async function getRoleFromProfile(supabase, userId) {
 }
 
 export async function resolveRoleFromSession(supabase, session) {
-  const claimedRole = getRoleFromSession(session)
+  if (!session) return null
+
+  const claimedRole = await getRoleFromClaims(supabase)
   if (claimedRole) return claimedRole
 
   const userId = session?.user?.id
   const dbRole = await getRoleFromProfile(supabase, userId)
-  return dbRole ?? 'customer'
-}
-
-export const ROLES = {
-  SUPER_ADMIN: 'super_admin',
-  ADMIN: 'admin',
-  CUSTOMER: 'customer',
+  return dbRole ?? ROLES.CUSTOMER
 }
 
 export function isSuper(role) { return role === ROLES.SUPER_ADMIN }

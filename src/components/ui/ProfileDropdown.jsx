@@ -15,8 +15,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signOut } from "@/app/actions/auth";
 
-
-
 function Avatar({ name, size = "sm" }) {
     const initials = name
         ? name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
@@ -37,8 +35,7 @@ export default function ProfileDropdown({ onNavigateLogin, onNavigateSignup }) {
     const timerRef = useRef(null);
     const router = useRouter();
 
-    // ── Correct destructuring from AuthProvider ──────────────────────────────
-    const { user, setSession, isLoggedIn, role, isAdmin } = useAuth();
+    const { user, setSession, isLoggedIn, isAdmin, isSuperAdmin } = useAuth();
 
     const menuItems = [
         {
@@ -52,16 +49,13 @@ export default function ProfileDropdown({ onNavigateLogin, onNavigateSignup }) {
     const displayName = user?.user_metadata?.full_name || user?.email || "User";
     const firstName = displayName.split(" ")[0];
 
-
-
     const show = () => { clearTimeout(timerRef.current); setOpen(true); };
     const hide = () => { timerRef.current = setTimeout(() => setOpen(false), 160); };
 
     const handleSignOut = async () => {
         await signOut();
-        setSession(null);
+        await setSession(null);
         router.replace("/sign-in");
-        router.refresh();
     };
 
     return (
@@ -97,14 +91,13 @@ export default function ProfileDropdown({ onNavigateLogin, onNavigateSignup }) {
                                 <p className="text-[11px] text-[#9b8070] m-0 truncate">
                                     {user?.email}
                                 </p>
-                                {/* Role badge */}
-                                {role && role !== 'customer' && (
-                                    <span className={`inline-block mt-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${role === 'super_admin'
+                                {/* Role badge — only renders for admins now */}
+                                {isAdmin && (
+                                    <span className={`inline-block mt-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${isSuperAdmin
                                         ? 'bg-purple-100 text-purple-700'
                                         : 'bg-orange-100 text-orange-700'
                                         }`}>
-                                        {role === 'super_admin' ? 'Super Admin' : 'Admin'}
-
+                                        {isSuperAdmin ? 'Super Admin' : 'Admin'}
                                     </span>
                                 )}
                             </div>

@@ -1,8 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 
-// Routes that need zero middleware (public)
-const PUBLIC_ROUTES = ['/', '/products', '/category', '/about', '/contact']
 const AUTH_ROUTES = ['/sign-in', '/sign-up']
 const ADMIN_ROUTES = ['/admin']
 const ACCOUNT_ROUTES = ['/account']
@@ -27,17 +25,20 @@ export async function proxy(request) {
     }
   )
 
-  // ── 1. Verify identity (Auth server — not DB) ──────────────────────────
-  const { data: { user } } = await supabase.auth.getUser()
-  const isLoggedIn = !!user
+  // getClaims() verifies the JWT and returns the decoded payload, including
+  // the custom user_role claim your access-token hook injects.
+  // getUser() does NOT expose custom claims — only the raw user record.
+  const { data, error } = await supabase.auth.getClaims()
+  const claims = data?.claims
+  const isLoggedIn = !!claims && !error
 
-  // ── 2. Auth pages — bounce logged-in users ─────────────────────────────
+  // ── auth pages — bounce logged-in users ──────────────────────────────
   if (AUTH_ROUTES.some(r => path === r)) {
     if (isLoggedIn) return NextResponse.redirect(new URL('/', request.url))
     return response
   }
 
-  // ── 3. Account pages — must be logged in ──────────────────────────────
+  // ── account pages — must be logged in ────────────────────────────────
   if (ACCOUNT_ROUTES.some(r => path.startsWith(r))) {
     if (!isLoggedIn) {
       return NextResponse.redirect(new URL(`/sign-in?next=${path}`, request.url))
@@ -45,24 +46,23 @@ export async function proxy(request) {
     return response
   }
 
-  // ── 4. Admin pages — must be logged in + correct role ─────────────────
+  // ── admin pages — must be logged in + correct role ───────────────────
   if (ADMIN_ROUTES.some(r => path.startsWith(r))) {
     if (!isLoggedIn) {
       return NextResponse.redirect(new URL(`/sign-in?next=${path}`, request.url))
     }
 
-    // Read role from JWT first (zero DB if hook works)
-    const jwtRole = user?.user_role
+    const jwtRole = claims.user_role
 
     if (jwtRole === 'admin' || jwtRole === 'super_admin') {
-      return response // JWT confirms admin — no DB needed
+      return response // JWT confirms admin — genuinely zero DB hits now
     }
 
-    // JWT hook not working — fallback to DB (only hits if JWT missing role)
+    // Hook not enabled yet, or claim missing — fall back to a DB read
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
-      .eq('id', user.id)
+      .eq('id', claims.sub)
       .single()
 
     const dbRole = profile?.role
@@ -82,5 +82,5 @@ export const config = {
     '/account/:path*',
     '/sign-in',
     '/sign-up',
-  ]
+  ],
 }

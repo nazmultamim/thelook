@@ -11,7 +11,7 @@ const NAV_SECTIONS = [
   {
     label: "Main",
     items: [
-      { id: "dashboard",  icon: LayoutDashboard, label: "Dashboard",   badge: null, href: "/admin/dashboard" },
+      { id: "dashboard",  icon: LayoutDashboard, label: "Dashboard",   badge: null, href: "/admin/dashboard/overview" },
       { id: "analytics",  icon: BarChart3,       label: "Analytics",   badge: null, href: "/admin/dashboard/analytics" },
       { id: "reports",    icon: FileText,         label: "Reports",     badge: "New", href: "/admin/dashboard/reports" },
     ],
