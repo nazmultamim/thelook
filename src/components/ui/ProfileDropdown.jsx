@@ -105,7 +105,9 @@ export default function ProfileDropdown({ onNavigateLogin, onNavigateSignup }) {
 
                         {/* Menu */}
                         <div className="py-1.5">
-                            {menuItems.map(({ icon: Icon, label, href }) => (
+                            {menuItems
+                            .filter(item => !(isAdmin && ["My Orders", "Track Order"].includes(item.label)))
+                            .map(({ icon: Icon, label, href }) => (
                                 <Link
                                     key={label}
                                     href={href}
