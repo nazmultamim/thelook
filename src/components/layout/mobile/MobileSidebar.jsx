@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronRight, ChevronDown, X, Home, LayoutGrid, Heart, FileText, User, LogOut } from "lucide-react";
+import { ChevronRight, ChevronDown, X, Home, LayoutGrid, Heart, FileText, User, LogOut, LayoutDashboard } from "lucide-react";
 import { FaStar, FaTruck, FaFire, FaMale, FaFemale, FaChild, FaGraduationCap } from "react-icons/fa";
 import { useAuth } from "@/context/AuthProvider";
+import { signOut } from "@/app/actions/auth";
 
 const navLinks = [
   {
@@ -59,39 +60,59 @@ const categories = [
   },
 ];
 
-const accountLinks = [
-  {
-    label: "My Orders",
-    icon: <FileText size={20} className="text-[#8a6a55]" />,
-  },
-  {
-    label: "My Wishlist",
-    icon: <Heart size={20} className="text-[#8a6a55]" />,
-  },
-  {
-    label: "My Profile",
-    icon: <User size={20} className="text-[#8a6a55]" />,
-  },
-];
+const getAccountLinks = (isAdmin) => {
+  if (isAdmin) {
+    return [
+      {
+        label: "Dashboard",
+        icon: <LayoutDashboard size={20} className="text-[#8a6a55]" />,
+        href: "/admin/dashboard/overview",
+      },
+      {
+        label: "My Profile",
+        icon: <User size={20} className="text-[#8a6a55]" />,
+        href: "/admin/dashboard/profile",
+      },
+    ];
+  }
 
+  return [
+    {
+      label: "My Orders",
+      icon: <FileText size={20} className="text-[#8a6a55]" />,
+      href: "/user/orders",
+    },
+    {
+      label: "My Wishlist",
+      icon: <Heart size={20} className="text-[#8a6a55]" />,
+      href: "/user/wishlist",
+    },
+    {
+      label: "My Profile",
+      icon: <User size={20} className="text-[#8a6a55]" />,
+      href: "/user/profile",
+    },
+  ];
+};
 export default function MobileSidebar({ isOpen, onClose }) {
   const [expandedCat, setExpandedCat] = useState(null);
   const router = useRouter();
-  const { session, supabase, loading } = useAuth()
+  const { user, loading, setSession, isLoggedIn, isAdmin, isSuperAdmin } = useAuth();
+
+  const accountLinks = getAccountLinks(isAdmin || isSuperAdmin);
 
   const toggleCat = (label) => {
     setExpandedCat(prev => prev === label ? null : label);
   };
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await signOut();
     onClose();
+    await setSession(null);
     router.push("/sign-in"); // redirect
   };
 
-  const userName = session?.user?.user_metadata?.full_name
-    || session?.user?.email
-    || "User";
+  const userName = user?.user_metadata?.full_name || user?.email || "User";
 
   if (loading) return null;
 
@@ -121,7 +142,7 @@ export default function MobileSidebar({ isOpen, onClose }) {
               <X size={14} />
             </button>
           </div>
-          {session?.user ? (
+          {isLoggedIn ? (
             <div className="flex items-center gap-3 rounded-3xl bg-white/10 p-3">
               <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#fdf8f3]/15 text-[#fdf8f3]">
                 <User size={18} />
@@ -206,10 +227,10 @@ export default function MobileSidebar({ isOpen, onClose }) {
           </span>
         </div>
         <div className="pb-6">
-          {accountLinks.map(({ label, icon }) => (
+          {accountLinks.map(({ label, icon, href }) => (
             <a
               key={label}
-              href="#"
+              href={href}
               className="flex items-center gap-4 px-5 py-[13px] no-underline text-[#2c1a0e] text-[15px] font-medium border-b border-[#f0e4d8] transition-colors hover:bg-[#fdf0e6]"
             >
               <span className="w-6 flex justify-center">{icon}</span>
@@ -218,7 +239,7 @@ export default function MobileSidebar({ isOpen, onClose }) {
           ))}
         </div>
 
-        {session?.user && (
+        {isLoggedIn && (
           <div className="mt-auto px-4 pb-5">
             <button
               type="button"

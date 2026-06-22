@@ -10,8 +10,8 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { useIsSuperAdmin } from '@/context/AuthProvider';
 import { updateUserRole } from '@/app/actions/auth';
-
 import { useRouter } from "next/navigation";
+import { CreateUserModal } from '@/components/admin/createAdmin';
 
 const ROLE_META = {
   super_admin: { label: 'Super Admin', color: 'text-purple-700 bg-purple-50 border-purple-200', dot: 'bg-purple-500' },
@@ -188,7 +188,7 @@ export default function CustomersPage() {
   const [dialog, setDialog] = useState({ open: false });
   const [showCreateUser, setShowCreateUser] = useState(false);
 
-  
+
 
   const toast = useCallback((message, type = 'success') => {
     const id = Date.now();
@@ -292,7 +292,7 @@ export default function CustomersPage() {
   return (
     <div className="min-h-screen bg-[#f5f0eb] p-6">
 
-    
+
       <div className="flex items-center gap-3 mb-6">
         <div className="flex-1">
           <h1 className="text-[22px] font-bold text-[#2c1a0e]">Customers</h1>
@@ -301,7 +301,7 @@ export default function CustomersPage() {
           </p>
         </div>
         {isSuperAdmin && (
-          <button onClick={() => router.push('/admin/dashboard/create-admin')}
+          <button onClick={() => setShowCreateUser(true)}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#d97845] text-white text-[13px] font-semibold border-none cursor-pointer hover:bg-[#b8622f] transition-colors shadow-[0_3px_10px_rgba(217,120,69,0.28)]">
             <UserPlus size={14} /> Create User
           </button>
@@ -431,6 +431,14 @@ export default function CustomersPage() {
 
       <ConfirmDialog open={dialog.open} title={dialog.title} message={dialog.message} confirmLabel={dialog.confirmLabel} danger={dialog.danger} onConfirm={dialog.onConfirm} onCancel={() => setDialog({ open: false })} />
       <Toast toasts={toasts} />
+      <CreateUserModal
+        isOpen={showCreateUser}
+        onClose={() => setShowCreateUser(false)}
+        onSuccess={() => {
+          setShowCreateUser(false);
+          fetchUsers(); // নতুন ইউজার তৈরি হলে লিস্ট অটোমেটিক রিফ্রেশ হবে
+        }}
+      />
     </div>
   );
 }

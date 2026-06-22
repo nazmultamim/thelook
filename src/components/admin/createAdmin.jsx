@@ -1,12 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useIsSuperAdmin } from '@/context/AuthProvider';
 import { createAdmin } from '@/app/actions/auth';
 import {
   User, Mail, Lock, Shield, Eye, EyeOff,
-  ArrowLeft, Check, AlertTriangle, UserPlus
+  X, Check, AlertTriangle, UserPlus
 } from 'lucide-react';
 
 // ── Input Field ───────────────────────────────────────────────────────────────
@@ -16,24 +15,22 @@ function InputField({ label, type = 'text', icon: Icon, value, onChange, placeho
 
   return (
     <div className="relative">
-      <div className={`flex items-center gap-3 border rounded-xl px-4 py-3.5 bg-white transition-all duration-200 ${
-        error
+      <div className={`flex items-center gap-3 border rounded-xl px-4 py-3.5 bg-white transition-all duration-200 ${error
           ? 'border-red-400 shadow-[0_0_0_3px_rgba(239,68,68,0.12)]'
           : focused
             ? 'border-[#d97845] shadow-[0_0_0_3px_rgba(217,120,69,0.14)]'
             : hasValue
               ? 'border-[#c8a990]'
               : 'border-[#e8d9cc]'
-      }`}>
+        }`}>
         {Icon && (
           <Icon size={17} className={`shrink-0 transition-colors duration-200 ${focused ? 'text-[#d97845]' : 'text-[#b8a090]'}`} />
         )}
         <div className="flex-1 relative">
-          <label className={`absolute left-0 transition-all duration-200 pointer-events-none select-none ${
-            focused || hasValue
+          <label className={`absolute left-0 transition-all duration-200 pointer-events-none select-none ${focused || hasValue
               ? 'text-[10px] top-0 text-[#d97845] font-semibold tracking-wide'
               : 'text-sm top-[9px] text-[#b8a090]'
-          }`}>
+            }`}>
             {label}
           </label>
           <input
@@ -129,23 +126,33 @@ function RoleSelector({ value, onChange }) {
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
-export default function CreateUserPage() {
-  const router = useRouter();
+// ── Modal Component হিসেবে ব্যবহার করার জন্য ──────────────────────────────────
+export function CreateUserModal({ isOpen, onClose, onSuccess }) {
   const isSuperAdmin = useIsSuperAdmin();
 
-  const [form, setForm] = useState({ fullName: '', email: '', password: '', role: 'admin' });
+  const [form, setForm] = useState({ fullName: '', email: '', phone: "", password: '', role: 'admin' });
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  if (!isOpen) return null;
+
   const set = (key) => (e) => setForm(p => ({ ...p, [key]: e.target.value }));
+
+  const handlePhoneChange = (e) => {
+    const rawValue = e.target.value;
+    const cleanedValue = rawValue.replace(/[^0-9+]/g, '');
+
+    setForm(p => ({ ...p, phone: cleanedValue }));
+  };
 
   const validate = () => {
     const errs = {};
-    if (!form.fullName.trim())                          errs.fullName = 'Full name is required';
+    if (!form.fullName.trim()) errs.fullName = 'Full name is required';
     if (!form.email.trim() || !/\S+@\S+\.\S+/.test(form.email)) errs.email = 'Valid email is required';
-    if (!form.password || form.password.length < 6)    errs.password = 'Password must be at least 6 characters';
+    if (!form.phone.trim() || form.phone.length < 7) errs.phone = "Valid phone number is required";
+    if (!form.password || form.password.length < 6) errs.password = 'Password must be at least 6 characters';
     return errs;
   };
 
@@ -166,7 +173,10 @@ export default function CreateUserPage() {
       });
 
       if (result?.error) setServerError(result.error);
-      else setSuccess(true);
+      else {
+        setSuccess(true);
+        if (onSuccess) onSuccess(); // লিস্ট রিফ্রেশ করার জন্য
+      }
     } catch {
       setServerError('Something went wrong. Please try again.');
     } finally {
@@ -174,123 +184,72 @@ export default function CreateUserPage() {
     }
   };
 
-  // Non-super-admins shouldn't reach this page, but guard client-side too
-  if (!isSuperAdmin) {
-    return (
-      <div className="min-h-screen bg-[#f5f0eb] flex items-center justify-center">
-        <div className="bg-white rounded-2xl border border-[#ede4da] p-10 flex flex-col items-center gap-4 max-w-sm text-center shadow-sm">
-          <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center">
-            <AlertTriangle size={24} className="text-red-500" />
-          </div>
-          <p className="font-bold text-[#2c1a0e] text-[15px]">Access Denied</p>
-          <p className="text-[13px] text-[#9b8070]">Only super admins can create users.</p>
-          <button onClick={() => router.back()}
-            className="mt-2 px-5 py-2 rounded-xl bg-[#d97845] text-white text-[13px] font-semibold border-none cursor-pointer hover:bg-[#b8622f] transition-colors">
-            Go Back
-          </button>
-        </div>
-      </div>
-    );
-  }
+  if (!isSuperAdmin) return null; // সুপার এডমিন না হলে রেন্ডার হবে না
 
   return (
-    <div className="min-h-screen bg-[#f5f0eb] p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="max-w-lg">
-        <div className="bg-white rounded-2xl border border-[#ede4da] shadow-sm overflow-hidden">
+      {/* Modal Content */}
+      <div className="relative bg-white rounded-2xl border border-[#ede4da] shadow-2xl overflow-hidden w-full max-w-lg z-10">
+        <div className="h-1 w-full bg-gradient-to-r from-[#d97845] via-[#e8a070] to-[#c86830]" />
 
-          {/* Accent strip */}
-          <div className="h-1 w-full bg-gradient-to-r from-[#d97845] via-[#e8a070] to-[#c86830]" />
-
-          {success ? (
-            /* ── Success State ── */
-            <div className="p-10 flex flex-col items-center gap-4 text-center">
-              <div className="w-16 h-16 rounded-full bg-[#d97845] flex items-center justify-center shadow-[0_4px_16px_rgba(217,120,69,0.35)]">
-                <Check size={30} className="text-white" strokeWidth={3} />
-              </div>
-              <div>
-                <p className="font-bold text-[#2c1a0e] text-[17px] mb-1">User Created!</p>
-                <p className="text-[13px] text-[#9b8070]">
-                  <span className="font-semibold text-[#2c1a0e]">{form.email}</span> has been added
-                  as a <span className="font-semibold text-[#d97845]">{form.role === 'admin' ? 'Admin' : 'Customer'}</span>.
-                </p>
-              </div>
-              <div className="flex gap-3 mt-2">
-                <button
-                  onClick={() => { setForm({ fullName: '', email: '', password: '', role: 'admin' }); setSuccess(false); }}
-                  className="px-5 py-2.5 rounded-xl border border-[#e8d9cc] text-[#6b5244] text-[13px] font-semibold bg-white hover:bg-[#fdf5ee] transition-colors cursor-pointer">
-                  Create Another
-                </button>
-                <button
-                  onClick={() => router.push('/admin/customers')}
-                  className="px-5 py-2.5 rounded-xl bg-[#d97845] text-white text-[13px] font-semibold border-none cursor-pointer hover:bg-[#b8622f] transition-colors">
-                  View All Users
-                </button>
-              </div>
+        {success ? (
+          <div className="p-10 flex flex-col items-center gap-4 text-center">
+            <div className="w-16 h-16 rounded-full bg-[#d97845] flex items-center justify-center">
+              <Check size={30} className="text-white" strokeWidth={3} />
             </div>
-          ) : (
-            /* ── Form ── */
-            <form onSubmit={handleSubmit} noValidate className="p-6 flex flex-col gap-5">
+            <div>
+              <p className="font-bold text-[#2c1a0e] text-[17px] mb-1">User Created!</p>
+              <p className="text-[13px] text-[#9b8070]">
+                <span className="font-semibold text-[#2c1a0e]">{form.email}</span> has been added.
+              </p>
+            </div>
+            <div className="flex gap-3 mt-2">
+              <button
+                onClick={() => { setForm({ fullName: '', email: '', password: '', role: 'admin' }); setSuccess(false); }}
+                className="px-5 py-2.5 rounded-xl border border-[#e8d9cc] text-[#6b5244] text-[13px] font-semibold bg-white hover:bg-[#fdf5ee] transition-colors cursor-pointer">
+                Create Another
+              </button>
+              <button onClick={onClose}
+                className="px-5 py-2.5 rounded-xl bg-[#d97845] text-white text-[13px] font-semibold border-none cursor-pointer hover:bg-[#b8622f] transition-colors">
+                Close
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} noValidate className="p-6 flex flex-col gap-5">
+            <div className="flex justify-between items-center mb-1">
+              <h2 className="text-lg font-bold text-[#2c1a0e]">Create New User</h2>
+              <button type="button" onClick={onClose} className="text-[#b8a090] hover:text-[#d97845] bg-transparent border-none cursor-pointer">
+                <X size={18} />
+              </button>
+            </div>
 
-              <InputField label="Full Name" icon={User}
-                value={form.fullName} onChange={set('fullName')}
-                placeholder="Jane Doe" error={errors.fullName} />
+            <InputField label="Full Name" icon={User} value={form.fullName} onChange={set('fullName')} placeholder="Jane Doe" error={errors.fullName} />
+            <InputField label="Email Address" type="email" icon={Mail} value={form.email} onChange={set('email')} placeholder="jane@example.com" error={errors.email} />
+            <InputField label="Phone" type="tel" icon={Mail} value={form.phone} onChange={handlePhoneChange} placeholder="01877585649" error={errors.phone} />
+            <PasswordField label="Password" value={form.password} onChange={set('password')} error={errors.password} />
+            <RoleSelector value={form.role} onChange={(role) => setForm(p => ({ ...p, role }))} />
 
-              <InputField label="Email Address" type="email" icon={Mail}
-                value={form.email} onChange={set('email')}
-                placeholder="jane@example.com" error={errors.email} />
-
-              <PasswordField label="Password"
-                value={form.password} onChange={set('password')}
-                error={errors.password} />
-
-              <RoleSelector
-                value={form.role}
-                onChange={(role) => setForm(p => ({ ...p, role }))} />
-
-              {serverError && (
-                <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-                  <AlertTriangle size={15} className="text-red-500 shrink-0 mt-0.5" />
-                  <p className="text-red-600 text-[13px]">{serverError}</p>
-                </div>
-              )}
-
-              <div className="flex gap-3 pt-1">
-                <button type="button" onClick={() => router.push('/admin/customers')}
-                  className="flex-1 py-3 rounded-xl border border-[#e8d9cc] text-[#6b5244] text-[13px] font-semibold bg-white hover:bg-[#fdf5ee] transition-colors cursor-pointer">
-                  Cancel
-                </button>
-                <button type="submit" disabled={loading}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-white text-[13px] font-bold border-none transition-all duration-200 ${
-                    loading
-                      ? 'bg-[#e8a070] cursor-not-allowed'
-                      : 'bg-[#d97845] hover:bg-[#b8622f] cursor-pointer shadow-[0_4px_14px_rgba(217,120,69,0.35)]'
-                  }`}>
-                  {loading ? (
-                    <>
-                      <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="white" strokeWidth="3" />
-                        <path className="opacity-75" fill="white" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                      </svg>
-                      Creating…
-                    </>
-                  ) : (
-                    <><UserPlus size={15} /> Create User</>
-                  )}
-                </button>
+            {serverError && (
+              <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                <AlertTriangle size={15} className="text-red-500 shrink-0 mt-0.5" />
+                <p className="text-red-600 text-[13px]">{serverError}</p>
               </div>
-            </form>
-          )}
-        </div>
+            )}
 
-        {/* Info note */}
-        <div className="mt-4 flex items-start gap-3 bg-white border border-[#ede4da] rounded-xl px-4 py-3">
-          <AlertTriangle size={14} className="text-[#d97845] shrink-0 mt-0.5" />
-          <p className="text-[12px] text-[#9b8070] leading-relaxed">
-            The user will be created with email confirmation already verified.
-            Their password can be changed from their own account settings.
-          </p>
-        </div>
+            <div className="flex gap-3 pt-1">
+              <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl border border-[#e8d9cc] text-[#6b5244] text-[13px] font-semibold bg-white hover:bg-[#fdf5ee] transition-colors cursor-pointer">
+                Cancel
+              </button>
+              <button type="submit" disabled={loading} className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-white text-[13px] font-bold border-none transition-all duration-200 ${loading ? 'bg-[#e8a070] cursor-not-allowed' : 'bg-[#d97845] hover:bg-[#b8622f] cursor-pointer shadow-[0_4px_14px_rgba(217,120,69,0.35)]'}`}>
+                {loading ? 'Creating…' : <><UserPlus size={15} /> Create User</>}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );

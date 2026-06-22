@@ -30,6 +30,7 @@ export async function PATCH(req, { params }) {
   if (!caller) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { id } = await params
+  
   const { action } = await req.json()
   if (!['ban', 'unban'].includes(action)) {
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
