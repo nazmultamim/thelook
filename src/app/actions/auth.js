@@ -18,9 +18,10 @@ export async function signUp(formData) {
 
   if (error) return { error: error.message }
 
-  // phone is captured by the handle_new_user trigger from the metadata above.
-  // No follow-up query needed — and one wouldn't reliably work anyway, since
-  // there's no session yet if email confirmation is required.
+  
+ 
+
+
   return { success: true }
 }
 
@@ -63,53 +64,6 @@ export async function signOut() {
   return { success: true }
 }
 
-// ── Create Admin (super_admin only) ─────────────────────────────────────────
-export async function createAdmin(formData) {
-  const { createClient: createSupabase } = await import('@supabase/supabase-js')
-
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
-
-  const { data: caller } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (caller?.role !== ROLES.SUPER_ADMIN) return { error: 'Unauthorized' }
-
-  // Service role is required here ONLY because auth.admin.createUser() has
-  // no other entry point — it's not a general-purpose RLS bypass.
-  const adminSupabase = createSupabase(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  )
-
-  const { data, error } = await adminSupabase.auth.admin.createUser({
-    email: formData.email,
-    password: formData.password,
-    email_confirm: true,
-    user_metadata: { full_name: formData.fullName, phone: formData.phone ?? '' }
-  })
-
-  if (error) return { error: error.message }
-
-  if (data.user) {
-    // Back to the caller's own session-bound client for this write — the
-    // RLS policy now checks the DB directly, so this is safe and correct.
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ role: ROLES.ADMIN })
-      .eq('id', data.user.id)
-
-    if (updateError) return { error: updateError.message }
-  }
-
-  revalidatePath('/admin/users')
-  return { success: true }
-}
 
 // ── Update User Role (super_admin only) ──────────────────────────────────────
 export async function updateUserRole(userId, newRole) {
@@ -153,5 +107,52 @@ export async function updateUserRole(userId, newRole) {
   }
 
   revalidatePath('/admin/users')
+  return { success: true }
+}
+
+
+export async function createAdmin(formData) {
+  const { createClient: createSupabase } = await import('@supabase/supabase-js')
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Unauthorized' }
+
+  const { data: caller } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (caller?.role !== ROLES.SUPER_ADMIN) return { error: 'Unauthorized' }
+
+  // Validate role — only these two are creatable from this form
+  const targetRole = formData.role === ROLES.ADMIN ? ROLES.ADMIN : ROLES.CUSTOMER
+  
+  const adminSupabase = createSupabase(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+
+  const { data, error } = await adminSupabase.auth.admin.createUser({
+    email: formData.email,
+    password: formData.password,
+    email_confirm: true,
+    user_metadata: { full_name: formData.fullName }
+  })
+
+  if (error) return { error: error.message }
+
+  if (data.user) {
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ role: targetRole })
+      .eq('id', data.user.id)
+
+    if (updateError) return { error: updateError.message }
+  }
+
+  revalidatePath('/admin/customers')
   return { success: true }
 }

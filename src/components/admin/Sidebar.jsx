@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+
 import {
   LayoutDashboard, BarChart3, FileText, Package2, ShoppingCart,
   Layers, Users, Megaphone, Tag, Settings, LifeBuoy
@@ -11,32 +12,32 @@ const NAV_SECTIONS = [
   {
     label: "Main",
     items: [
-      { id: "dashboard",  icon: LayoutDashboard, label: "Dashboard",   badge: null, href: "/admin/dashboard/overview" },
-      { id: "analytics",  icon: BarChart3,       label: "Analytics",   badge: null, href: "/admin/dashboard/analytics" },
-      { id: "reports",    icon: FileText,         label: "Reports",     badge: "New", href: "/admin/dashboard/reports" },
+      { id: "dashboard", icon: LayoutDashboard, label: "Dashboard", badge: null, href: "/admin/dashboard/overview" },
+      { id: "analytics", icon: BarChart3, label: "Analytics", badge: null, href: "/admin/dashboard/analytics" },
+      { id: "reports", icon: FileText, label: "Reports", badge: "New", href: "/admin/dashboard/reports" },
     ],
   },
   {
     label: "Store",
     items: [
-      { id: "products",   icon: Package2,        label: "Products",    badge: "248", href: "/admin/dashboard/products" },
-      { id: "orders",     icon: ShoppingCart,    label: "Orders",      badge: "12", href: "/admin/dashboard/orders" },
-      { id: "inventory",  icon: Layers,           label: "Inventory",   badge: null, href: "/admin/dashboard/inventory" },
-      { id: "customers",  icon: Users,            label: "Customers",   badge: null, href: "/admin/dashboard/customers" },
+      { id: "products", icon: Package2, label: "Products", badge: "248", href: "/admin/dashboard/products" },
+      { id: "orders", icon: ShoppingCart, label: "Orders", badge: "12", href: "/admin/dashboard/orders" },
+      { id: "inventory", icon: Layers, label: "Inventory", badge: null, href: "/admin/dashboard/inventory" },
+      { id: "customers", icon: Users, label: "Customers", badge: null, href: "/admin/dashboard/customers" },
     ],
   },
   {
     label: "Marketing",
     items: [
-      { id: "campaigns",  icon: Megaphone,        label: "Campaigns",   badge: null, href: "/admin/dashboard/campaigns" },
-      { id: "promotions", icon: Tag,              label: "Promotions",  badge: "3", href: "/admin/dashboard/promotions" },
+      { id: "campaigns", icon: Megaphone, label: "Campaigns", badge: null, href: "/admin/dashboard/campaigns" },
+      { id: "promotions", icon: Tag, label: "Promotions", badge: "3", href: "/admin/dashboard/promotions" },
     ],
   },
   {
     label: "System",
     items: [
-      { id: "settings",   icon: Settings,         label: "Settings",    badge: null, href: "/admin/dashboard/settings" },
-      { id: "support",    icon: LifeBuoy,         label: "Support",     badge: null, href: "/admin/dashboard/support" },
+      { id: "settings", icon: Settings, label: "Settings", badge: null, href: "/admin/dashboard/settings" },
+      { id: "support", icon: LifeBuoy, label: "Support", badge: null, href: "/admin/dashboard/support" },
     ],
   },
 ];
@@ -71,9 +72,11 @@ export default function Sidebar({ open, collapsed, onClose }) {
         style={{ width: open ? (collapsed ? W_MINI : W_FULL) : 0 }}
       >
         <div className="flex items-center gap-3 px-4 py-5 border-b border-white/[0.07] min-h-[70px]">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#d97845] to-[#b8622f] flex items-center justify-center shrink-0 shadow-lg">
-            <span className="text-white font-black text-[14px]">F</span>
-          </div>
+          <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="16,2 30,10 30,22 16,30 2,22 2,10" fill="#d97845" />
+            <polygon points="16,8 24,13 24,19 16,24 8,19 8,13" fill="#fdf8f3" />
+            <polygon points="16,12 20,14.5 20,17.5 16,20 12,17.5 12,14.5" fill="#d97845" />
+          </svg>
           {!collapsed && (
             <div className="overflow-hidden">
               <p className="text-white font-extrabold text-[15px] m-0 leading-tight whitespace-nowrap">THELOOK</p>
@@ -114,11 +117,10 @@ export default function Sidebar({ open, collapsed, onClose }) {
                       <>
                         <span className="flex-1 text-[13px] font-medium whitespace-nowrap">{item.label}</span>
                         {item.badge && (
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            item.badge === "New"
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.badge === "New"
                               ? "bg-[#d97845]/20 text-[#d97845]"
                               : "bg-white/10 text-white/60"
-                          }`}>
+                            }`}>
                             {item.badge}
                           </span>
                         )}

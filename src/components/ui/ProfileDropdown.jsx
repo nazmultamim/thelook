@@ -40,7 +40,7 @@ export default function ProfileDropdown({ onNavigateLogin, onNavigateSignup }) {
     const menuItems = [
         {
             icon: LayoutDashboard, label: "Dashboard",
-            href: isAdmin ? "/admin/dashboard" : "/user/dashboard"
+            href: isAdmin ? "/admin/dashboard/overview" : "/user/dashboard"
         },
         { icon: Package, label: "My Orders", href: "/orders" },
         { icon: MapPin, label: "Track Order", href: "/track-order" },

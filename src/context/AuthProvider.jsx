@@ -16,7 +16,7 @@ export function AuthProvider({ children, initialSession = null }) {
   const [supabase] = useState(() => createClient());
   const [session, setSessionState] = useState(initialSession);
   const [role, setRole] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Update session + role together, falling back to profiles.role when the
   // JWT claim is not present in the browser session.

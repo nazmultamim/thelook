@@ -208,12 +208,6 @@ export default function AuthForm({ mode = "signin" }) {
                                     <p className="text-sm text-[#9b8070]">
                                         Check your email to confirm your account.
                                     </p>
-                                    <button
-                                        onClick={() => router.push("/sign-in")}
-                                        className="mt-4 text-[#d97845] font-semibold text-sm bg-transparent border-none cursor-pointer hover:text-[#b8622f] transition-colors"
-                                    >
-                                        Go to Sign In →
-                                    </button>
                                 </div>
                             </div>
                         ) : (

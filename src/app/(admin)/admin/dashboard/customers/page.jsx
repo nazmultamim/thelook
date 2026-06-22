@@ -4,17 +4,19 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Users, Search, ChevronDown, ChevronUp, Shield,
   Trash2, Mail, Phone, Calendar, MoreHorizontal, UserCheck,
-  UserX, Crown, User, RefreshCw, Filter,
+  UserX, Crown, User, RefreshCw, Filter, UserPlus,
   AlertTriangle, X, Check, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useIsSuperAdmin } from '@/context/AuthProvider';
 import { updateUserRole } from '@/app/actions/auth';
 
+import { useRouter } from "next/navigation";
+
 const ROLE_META = {
   super_admin: { label: 'Super Admin', color: 'text-purple-700 bg-purple-50 border-purple-200', dot: 'bg-purple-500' },
-  admin:       { label: 'Admin',       color: 'text-orange-700 bg-orange-50 border-orange-200', dot: 'bg-orange-500' },
-  user:        { label: 'Customer',    color: 'text-slate-600  bg-slate-50  border-slate-200',  dot: 'bg-slate-400'  },
+  admin: { label: 'Admin', color: 'text-orange-700 bg-orange-50 border-orange-200', dot: 'bg-orange-500' },
+  user: { label: 'Customer', color: 'text-slate-600  bg-slate-50  border-slate-200', dot: 'bg-slate-400' },
 };
 const PAGE_SIZE = 10;
 
@@ -149,10 +151,10 @@ function ExpandedRow({ user }) {
     <div className="px-6 pb-5 pt-2 bg-[#fdf8f3] border-t border-[#f0e8e0]">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Email',   icon: Mail,     value: user.email },
-          { label: 'Phone',   icon: Phone,    value: user.phone },
-          { label: 'Joined',  icon: Calendar, value: user.created_at ? new Date(user.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : null },
-          { label: 'User ID', icon: null,     value: user.id, mono: true },
+          { label: 'Email', icon: Mail, value: user.email },
+          { label: 'Phone', icon: Phone, value: user.phone },
+          { label: 'Joined', icon: Calendar, value: user.created_at ? new Date(user.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : null },
+          { label: 'User ID', icon: null, value: user.id, mono: true },
         ].map(({ label, icon: Icon, value, mono }) => (
           <div key={label} className="bg-white rounded-xl p-4 border border-[#ede4da]">
             <p className="text-[10px] text-[#9b8070] font-semibold uppercase tracking-wider mb-1">{label}</p>
@@ -168,21 +170,25 @@ function ExpandedRow({ user }) {
 }
 
 export default function CustomersPage() {
-  const supabase     = createClient();
+  const supabase = createClient();
   const isSuperAdmin = useIsSuperAdmin();
+  const router = useRouter();
 
-  const [users, setUsers]             = useState([]);
-  const [total, setTotal]             = useState(0);
+  const [users, setUsers] = useState([]);
+  const [total, setTotal] = useState(0);
   const [globalStats, setGlobalStats] = useState({ total: 0, admins: 0, active: 0, banned: 0 });
-  const [loading, setLoading]         = useState(true);
-  const [search, setSearch]           = useState('');
-  const [roleFilter, setRoleFilter]   = useState('all');
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [page, setPage]               = useState(1);
-  const [expandedId, setExpandedId]   = useState(null);
-  const [toasts, setToasts]           = useState([]);
+  const [page, setPage] = useState(1);
+  const [expandedId, setExpandedId] = useState(null);
+  const [toasts, setToasts] = useState([]);
   const [actionLoading, setActionLoading] = useState(null);
-  const [dialog, setDialog]           = useState({ open: false });
+  const [dialog, setDialog] = useState({ open: false });
+  const [showCreateUser, setShowCreateUser] = useState(false);
+
+  
 
   const toast = useCallback((message, type = 'success') => {
     const id = Date.now();
@@ -234,11 +240,11 @@ export default function CustomersPage() {
     if (!isSuperAdmin) return; // belt and suspenders — UI shouldn't even call this, but don't trust it blindly
     if (type === 'view') { setExpandedId(id => id === user.id ? null : user.id); return; }
     const configs = {
-      promote: { title: 'Promote to Admin',    message: `Give ${user.full_name || user.email} admin access?`,              confirmLabel: 'Promote', danger: false, onConfirm: () => execAction('promote', user) },
-      demote:  { title: 'Demote to Customer',  message: `Remove admin access from ${user.full_name || user.email}?`,        confirmLabel: 'Demote',  danger: false, onConfirm: () => execAction('demote', user)  },
-      ban:     { title: 'Ban User',            message: `Ban ${user.full_name || user.email}? They won't be able to sign in.`, confirmLabel: 'Ban',   danger: true,  onConfirm: () => execAction('ban', user)     },
-      unban:   { title: 'Unban User',          message: `Restore access for ${user.full_name || user.email}?`,              confirmLabel: 'Unban',   danger: false, onConfirm: () => execAction('unban', user)   },
-      delete:  { title: 'Delete User',         message: `Permanently delete ${user.full_name || user.email}? Cannot be undone.`, confirmLabel: 'Delete', danger: true, onConfirm: () => execAction('delete', user) },
+      promote: { title: 'Promote to Admin', message: `Give ${user.full_name || user.email} admin access?`, confirmLabel: 'Promote', danger: false, onConfirm: () => execAction('promote', user) },
+      demote: { title: 'Demote to Customer', message: `Remove admin access from ${user.full_name || user.email}?`, confirmLabel: 'Demote', danger: false, onConfirm: () => execAction('demote', user) },
+      ban: { title: 'Ban User', message: `Ban ${user.full_name || user.email}? They won't be able to sign in.`, confirmLabel: 'Ban', danger: true, onConfirm: () => execAction('ban', user) },
+      unban: { title: 'Unban User', message: `Restore access for ${user.full_name || user.email}?`, confirmLabel: 'Unban', danger: false, onConfirm: () => execAction('unban', user) },
+      delete: { title: 'Delete User', message: `Permanently delete ${user.full_name || user.email}? Cannot be undone.`, confirmLabel: 'Delete', danger: true, onConfirm: () => execAction('delete', user) },
     };
     setDialog({ open: true, ...configs[type] });
   };
@@ -286,12 +292,21 @@ export default function CustomersPage() {
   return (
     <div className="min-h-screen bg-[#f5f0eb] p-6">
 
-      <div className="flex items-center justify-between mb-6">
-        <div>
+    
+      <div className="flex items-center gap-3 mb-6">
+        <div className="flex-1">
           <h1 className="text-[22px] font-bold text-[#2c1a0e]">Customers</h1>
-          <p className="text-[13px] text-[#9b8070] mt-0.5">{globalStats.total} registered user{globalStats.total !== 1 ? 's' : ''}</p>
+          <p className="text-[13px] text-[#9b8070] mt-0.5">
+            {globalStats.total} registered user{globalStats.total !== 1 ? 's' : ''}
+          </p>
         </div>
-        <button onClick={() => { fetchUsers(); }}
+        {isSuperAdmin && (
+          <button onClick={() => router.push('/admin/dashboard/create-admin')}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#d97845] text-white text-[13px] font-semibold border-none cursor-pointer hover:bg-[#b8622f] transition-colors shadow-[0_3px_10px_rgba(217,120,69,0.28)]">
+            <UserPlus size={14} /> Create User
+          </button>
+        )}
+        <button onClick={fetchUsers}
           className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[#e8d9cc] text-[#6b5244] text-[13px] font-medium hover:bg-white transition-colors bg-transparent cursor-pointer">
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
         </button>
@@ -299,10 +314,10 @@ export default function CustomersPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {[
-          { label: 'Total Users', value: globalStats.total,  icon: Users,     color: 'text-[#d97845] bg-orange-50' },
-          { label: 'Admins',      value: globalStats.admins, icon: Shield,    color: 'text-purple-600 bg-purple-50' },
-          { label: 'Active',      value: globalStats.active, icon: UserCheck, color: 'text-emerald-600 bg-emerald-50' },
-          { label: 'Banned',      value: globalStats.banned, icon: UserX,     color: 'text-red-500 bg-red-50' },
+          { label: 'Total Users', value: globalStats.total, icon: Users, color: 'text-[#d97845] bg-orange-50' },
+          { label: 'Admins', value: globalStats.admins, icon: Shield, color: 'text-purple-600 bg-purple-50' },
+          { label: 'Active', value: globalStats.active, icon: UserCheck, color: 'text-emerald-600 bg-emerald-50' },
+          { label: 'Banned', value: globalStats.banned, icon: UserX, color: 'text-red-500 bg-red-50' },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-white rounded-2xl border border-[#ede4da] p-4 flex items-center gap-4">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${color}`}><Icon size={18} /></div>

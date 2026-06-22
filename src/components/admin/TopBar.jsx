@@ -3,6 +3,9 @@
 import { useState, useRef, useEffect } from "react";
 import { Menu, ChevronRight, Search, ShoppingBag, Bell, ChevronDown, User, Shield, Settings, LogOut } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { signOut } from "@/app/actions/auth";
+import { useAuth } from "@/context/AuthProvider";
 
 
 const NOTIFS = [
@@ -16,8 +19,19 @@ export default function TopBar({ sidebarOpen, sidebarCollapsed, onToggleSidebar,
     const [notifOpen, setNotifOpen] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
     const [searchVal, setSearchVal] = useState("");
+    const { user, setSession, isLoggedIn, isAdmin, isSuperAdmin } = useAuth();
     const notifRef = useRef(null);
     const profileRef = useRef(null);
+    const router = useRouter();
+
+    const displayName = user?.user_metadata?.full_name || user?.email || "User";
+    const initials = displayName
+        .split(" ")
+        .filter(Boolean)              // remove empty spaces
+        .map(word => word[0])        // take first letter
+        .slice(0, 2)                 // max 2 letters
+        .join("")
+        .toUpperCase()
 
     useEffect(() => {
         const handler = (e) => {
@@ -27,6 +41,12 @@ export default function TopBar({ sidebarOpen, sidebarCollapsed, onToggleSidebar,
         document.addEventListener("mousedown", handler);
         return () => document.removeEventListener("mousedown", handler);
     }, []);
+
+    const handleSignOut = async () => {
+        await signOut();
+        await setSession(null);
+        router.replace("/sign-in");
+    };
 
     const W_FULL = 256;
     const W_MINI = 68;
@@ -110,10 +130,10 @@ export default function TopBar({ sidebarOpen, sidebarCollapsed, onToggleSidebar,
                         className="flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-xl border border-[#ede4da] bg-white hover:bg-[#fdf0e6] hover:border-[#d97845] cursor-pointer transition-all"
                     >
                         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#d97845] to-[#b8622f] flex items-center justify-center text-white font-bold text-[12px] shadow">
-                            A
+                            {initials}
                         </div>
                         <div className="hidden md:block text-left">
-                            <p className="text-[12.5px] font-semibold text-[#2c1a0e] m-0 leading-tight">Admin User</p>
+                            <p className="text-[12.5px] font-semibold text-[#2c1a0e] m-0 leading-tight">{displayName}</p>
                             <p className="text-[10.5px] text-[#9b8070] m-0">Super Admin</p>
                         </div>
                         <ChevronDown size={13} className={`text-[#9b8070] transition-transform duration-200 ${profileOpen ? "rotate-180" : ""}`} />
@@ -135,7 +155,7 @@ export default function TopBar({ sidebarOpen, sidebarCollapsed, onToggleSidebar,
                             ))}
                             <div className="mx-3 my-1 border-t border-[#f0e8e0]" />
                             <button
-                                onClick={onGoToShop}
+                                onClick={handleSignOut}
                                 className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-red-500 hover:bg-red-50 transition-colors cursor-pointer bg-transparent border-none text-left"
                             >
                                 <LogOut size={14} />

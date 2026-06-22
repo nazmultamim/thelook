@@ -6,6 +6,7 @@ import { Search, MapPin, Heart, ShoppingBag, Menu } from "lucide-react";
 import MobileSidebar from "./layout/mobile/MobileSidebar";
 import ProfileDropdown from "./ui/ProfileDropdown";
 import Logo from "./ui/logo";
+import { useAuth } from "@/context/AuthProvider";
 
 
 const categories = [
@@ -112,12 +113,14 @@ export default function Navbar({ onNavigateLogin, onNavigateSignup }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+  const { isAdmin, loading } = useAuth();
+
+
 
   useEffect(() => {
     document.body.style.overflow = sidebarOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [sidebarOpen]);
-
 
 
   return (
@@ -159,8 +162,14 @@ export default function Navbar({ onNavigateLogin, onNavigateSignup }) {
               onNavigateSignup={onNavigateSignup}
             />
 
-            <IconBtn icon={<Heart size={20} />} label="Wishlist" href="/wishlist" />
-            <IconBtn icon={<ShoppingBag size={20} />} label="Bag" href="/bag" />
+            {!loading && !isAdmin && (
+              <>
+                <IconBtn icon={<Heart size={20} />} label="Wishlist" href="/wishlist" />
+                <IconBtn icon={<ShoppingBag size={20} />} label="Bag" href="/bag" />
+              </>
+            )}
+
+
           </div>
 
           {/* Mobile Controls */}
