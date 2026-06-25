@@ -41,15 +41,17 @@ async function fetchAdminProductsPage({ page = 1, search = '', categoryId = '', 
 // ── Public: get single product by slug (e.g. "10001-classic-oxford-shirt") ───
 // Extracts the numeric code prefix so we hit the indexed integer column,
 // not a LIKE scan on the slug string — this is the fast path.
-export function getCachedProduct(slug) {
+export async function getCachedProduct(slug) {
   if (!slug) return null
   const slugValue = Array.isArray(slug) ? slug[0] : slug
   const normalizedSlug = String(slugValue).trim().toLowerCase()
   const productCode = parseInt(normalizedSlug.split('-')[0], 10)
 
+  const supabase = await createClient()
+
   return unstable_cache(
     async () => {
-      const supabase = await createClient()
+      
       const baseSelect = `
           id, product_code, name, slug, description, details,
           base_price, discount_price, brand, is_active, created_at,

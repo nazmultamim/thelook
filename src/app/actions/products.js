@@ -241,6 +241,22 @@ export async function markOutOfStock(productId) {
     return { success: true }
 }
 
+// ── Mark all sizes as in stock again ─────────────────────────────────────────
+export async function markInStock(productId, stockPerSize = 1) {
+    const supabase = await createClient()
+    const caller = await verifyAdmin(supabase)
+    if (!caller) return { error: 'Unauthorized' }
+
+    const { error } = await supabase
+        .from('product_sizes')
+        .update({ stock_quantity: stockPerSize })
+        .eq('product_id', productId)
+
+    if (error) return { error: error.message }
+    revalidateTag('products')
+    return { success: true }
+}
+
 // ── Fetch for client components (cache still applies server-side) ─────────────
 export async function fetchAdminProducts(params) {
     const { getAdminProductsPage } = await import('@/lib/data/products')

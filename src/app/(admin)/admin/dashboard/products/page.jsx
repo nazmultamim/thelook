@@ -6,13 +6,14 @@ import { createClient } from '@/lib/supabase/client'
 import { useAdminStore } from '@/store/adminStore'
 import {
     fetchAdminProducts, fetchCategories,
-    deleteProduct, toggleProductStatus, markOutOfStock
+    deleteProduct, toggleProductStatus, markOutOfStock, markInStock
 } from '@/app/actions/products'
 import {
     Plus, Search, Filter, RefreshCw, MoreHorizontal,
     Pencil, Trash2, Eye, EyeOff, PackageX, X, Check,
     AlertTriangle, ChevronLeft, ChevronRight, Package
 } from 'lucide-react'
+import Link from 'next/link'
 
 const PAGE_SIZE = 12
 
@@ -136,7 +137,12 @@ function ActionMenu({ product, onAction }) {
                     </button>
 
                     {/* Stock status */}
-                    {!isOOS && (
+                    {isOOS ? (
+                        <button onClick={() => act('mark_in_stock')}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] text-[#3d2410] hover:bg-[#fdf0e6] transition-colors border-none bg-transparent cursor-pointer text-left">
+                            <Package size={14} className="text-emerald-500" /> Mark In Stock
+                        </button>
+                    ) : (
                         <button onClick={() => act('mark_oos')}
                             className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] text-[#3d2410] hover:bg-[#fdf0e6] transition-colors border-none bg-transparent cursor-pointer text-left">
                             <PackageX size={14} className="text-amber-500" /> Mark Out of Stock
@@ -228,7 +234,7 @@ export default function AdminProductsPage() {
                 setLoading(false)
             }
         }
-    }, [page, search, categoryId, statusFilter, toast])
+    }, [page, search, categoryId, statusFilter, toast, setProductTotal])
 
     // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => { void load() }, [load])
@@ -267,6 +273,13 @@ export default function AdminProductsPage() {
                 danger: false,
                 onConfirm: () => execAction('mark_oos', product),
             },
+            mark_in_stock: {
+                title: 'Mark In Stock',
+                message: `Set all sizes of "${product.name}" back to 1 in stock?`,
+                confirmLabel: 'Mark In Stock',
+                danger: false,
+                onConfirm: () => execAction('mark_in_stock', product),
+            },
             delete: {
                 title: 'Delete Product',
                 message: `Permanently delete "${product.name}"? All images, sizes, and colors will be removed.`,
@@ -294,6 +307,10 @@ export default function AdminProductsPage() {
             if (type === 'mark_oos') {
                 result = await markOutOfStock(product.id)
                 if (!result?.error) toast(`"${product.name}" marked as out of stock`)
+            }
+            if (type === 'mark_in_stock') {
+                result = await markInStock(product.id)
+                if (!result?.error) toast(`"${product.name}" marked as in stock`)
             }
             if (type === 'delete') {
                 result = await deleteProduct(product.id)
@@ -380,7 +397,7 @@ export default function AdminProductsPage() {
             </div>
 
             {/* Table */}
-            <div className="bg-white rounded-2xl border border-[#ede4da] overflow-hidden">
+            <div className="bg-white rounded-2xl border border-[#ede4da] overflow-visible">
 
                 {/* Header row */}
                 <div className="grid grid-cols-[56px_1fr_140px_120px_100px_100px_48px] gap-4 px-5 py-3 bg-[#fdf8f3] border-b border-[#f0e8e0]">
@@ -421,19 +438,20 @@ export default function AdminProductsPage() {
                 ${actionLoading === product.id ? 'opacity-50 pointer-events-none' : ''}`}>
 
                             {/* Thumbnail */}
+
                             <ProductThumb images={product.images} />
-
-                            {/* Name + meta */}
-                            <div className="min-w-0">
-                                <p className="text-[13.5px] font-semibold text-[#2c1a0e] truncate">{product.name}</p>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                    {product.brand && (
-                                        <span className="text-[11px] text-[#b8a090]">{product.brand}</span>
-                                    )}
-                                    <span className="text-[10px] text-[#c8b4a4]">#{product.product_code}</span>
+                            <Link href={`/product/${product.slug}`}>
+                                {/* Name + meta */}
+                                <div className="min-w-0">
+                                    <p className="text-[13.5px] font-semibold text-[#2c1a0e] truncate">{product.name}</p>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                        {product.brand && (
+                                            <span className="text-[11px] text-[#b8a090]">{product.brand}</span>
+                                        )}
+                                        <span className="text-[10px] text-[#c8b4a4]">#{product.product_code}</span>
+                                    </div>
                                 </div>
-                            </div>
-
+                            </Link>
                             {/* Category */}
                             <div className="min-w-0">
                                 {product.category ? (

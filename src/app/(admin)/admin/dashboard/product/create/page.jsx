@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useIsAdmin } from '@/context/AuthProvider'
-import { createProduct, updateProduct, getCategories, fetchAdminProduct } from '@/app/actions/products'
+import { createClient } from '@/lib/supabase/client'
+import { createProduct, updateProduct, getCategories } from '@/app/actions/products'
 import TipTapEditor from '@/components/admin/ui/TipTapEditor'
 import ImageUploader from '@/components/admin/ui/ImageUploader'
 import {
@@ -217,15 +218,25 @@ export default function CreateProductPage() {
     if (!productId) return
 
     let mounted = true
+    const supabase = createClient()
 
-    fetchAdminProduct(productId)
-      .then(product => {
+    supabase
+      .from('products')
+      .select(`
+        *,
+        colors:product_colors(id, name, hex_code, display_order),
+        sizes:product_sizes(id, label, sku, stock_quantity, price_override),
+        images:product_images(id, storage_path, display_order, is_primary, color_id)
+      `)
+      .eq('id', productId)
+      .single()
+      .then(({ data, error }) => {
         if (!mounted) return
-        if (!product) {
-          setServerError('Product not found')
+        if (error || !data) {
+          setServerError(error?.message || 'Product not found')
           return
         }
-        setForm(mapProductToForm(product))
+        setForm(mapProductToForm(data))
         setServerError('')
       })
       .catch(() => {

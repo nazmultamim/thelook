@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
@@ -20,6 +21,22 @@ function ToolbarBtn({ active, onClick, children, title }) {
   )
 }
 
+// Full list of editor content styles — Tailwind resets strip ul/ol/li
+// by default, so we re-apply them using arbitrary variant selectors.
+const EDITOR_CLASS = [
+  'min-h-[220px] outline-none text-[14px] text-[#2c1a0e] leading-relaxed px-4 py-3',
+  '[&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-2',
+  '[&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-2',
+  '[&_li]:my-1 [&_li]:pl-1',
+  '[&_h2]:text-[18px] [&_h2]:font-bold [&_h2]:text-[#2c1a0e] [&_h2]:my-3',
+  '[&_h3]:text-[15px] [&_h3]:font-semibold [&_h3]:text-[#2c1a0e] [&_h3]:my-2',
+  '[&_p]:my-1',
+  '[&_hr]:my-4 [&_hr]:border-[#e8d9cc]',
+  '[&_strong]:font-bold',
+  '[&_em]:italic',
+  '[&_u]:underline',
+].join(' ')
+
 export default function TipTapEditor({ value, onChange, placeholder = 'Write product details…' }) {
   const editor = useEditor({
     extensions: [
@@ -31,11 +48,29 @@ export default function TipTapEditor({ value, onChange, placeholder = 'Write pro
     content: value || '',
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
     editorProps: {
-      attributes: {
-        class: 'min-h-[220px] outline-none text-[14px] text-[#2c1a0e] leading-relaxed px-4 py-3',
-      },
+      attributes: { class: EDITOR_CLASS },
     },
   })
+  const lastSyncedValue = useRef(value || '')
+
+  useEffect(() => {
+    if (!editor) return
+
+    const nextValue = value || ''
+    const currentValue = editor.getHTML()
+
+    if (!nextValue && editor.isEmpty) {
+      lastSyncedValue.current = nextValue
+      return
+    }
+
+    if (nextValue === currentValue || nextValue === lastSyncedValue.current) {
+      return
+    }
+
+    lastSyncedValue.current = nextValue
+    editor.commands.setContent(nextValue, false)
+  }, [editor, value])
 
   if (!editor) return null
 
@@ -90,7 +125,6 @@ export default function TipTapEditor({ value, onChange, placeholder = 'Write pro
         </ToolbarBtn>
       </div>
 
-      {/* Editor */}
       <EditorContent editor={editor} />
     </div>
   )
