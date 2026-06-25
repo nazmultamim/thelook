@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAdminStore } from '@/store/adminStore'
 
 import {
   LayoutDashboard, BarChart3, FileText, Package2, ShoppingCart,
@@ -20,7 +21,7 @@ const NAV_SECTIONS = [
   {
     label: "Store",
     items: [
-      { id: "products", icon: Package2, label: "Products", badge: "248", href: "/admin/dashboard/products" },
+      { id: "products", icon: Package2, label: "Products", badge: "248", href: "/admin/dashboard/products" }, //want to show the totl product in the bage
       { id: "orders", icon: ShoppingCart, label: "Orders", badge: "12", href: "/admin/dashboard/orders" },
       { id: "inventory", icon: Layers, label: "Inventory", badge: null, href: "/admin/dashboard/inventory" },
       { id: "customers", icon: Users, label: "Customers", badge: null, href: "/admin/dashboard/customers" },
@@ -54,6 +55,9 @@ const isActiveHref = (pathname, href) => {
 };
 
 export default function Sidebar({ open, collapsed, onClose }) {
+
+  const productTotal = useAdminStore(s => s.productTotal)
+
   const pathname = usePathname();
   const W_FULL = 256;
   const W_MINI = 68;
@@ -97,6 +101,12 @@ export default function Sidebar({ open, collapsed, onClose }) {
 
               {section.items.map(item => {
                 const isActive = isActiveHref(pathname, item.href);
+
+                const dynamicBadge =
+                  item.id === "products"
+                    ? productTotal
+                    : item.badge
+
                 return (
                   <Link
                     key={item.id}
@@ -116,14 +126,16 @@ export default function Sidebar({ open, collapsed, onClose }) {
                     {!collapsed && (
                       <>
                         <span className="flex-1 text-[13px] font-medium whitespace-nowrap">{item.label}</span>
-                        {item.badge && (
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.badge === "New"
+                        {dynamicBadge ? (
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.badge === "New"
                               ? "bg-[#d97845]/20 text-[#d97845]"
                               : "bg-white/10 text-white/60"
-                            }`}>
-                            {item.badge}
+                              }`}
+                          >
+                            {dynamicBadge}
                           </span>
-                        )}
+                        ) : null}
                       </>
                     )}
                   </Link>

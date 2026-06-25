@@ -12,12 +12,12 @@ const items = [
 ];
 
 export default function MobileBottomNav() {
-  const { session, loading } = useAuth();
+  const { user, loading, isAdmin } = useAuth();
 
   if(loading) return null;
   
-  const authItem = session?.user 
-    ? { label: "Dashboard", icon: LayoutDashboard, href: "/user/dashboard", active: false }
+  const authItem = user 
+    ? { label: "Dashboard", icon: LayoutDashboard, href: isAdmin ? "/admin/dashboard/overview" : "/user/dashboard", active: false }
     : { label: "Login",     icon: User,            href: "/sign-in",        active: false };
 
   const allItems = [...items, authItem];

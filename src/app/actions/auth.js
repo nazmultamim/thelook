@@ -1,14 +1,40 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { getRoleFromClaims, getRoleFromProfile, ROLES } from '@/lib/auth/getRole'
 
-// ── Sign Up ──────────────────────────────────────────────────────────────────
+// ── Service role client (bypasses RLS) ───────────────────────────────────────
+function getServiceClient() {
+  return createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+}
+
+// ── Verify caller is super_admin ─────────────────────────────────────────────
+// Uses the session-bound client to read the CALLER'S OWN profile.
+// "view own profile" RLS always allows this — no JWT claim needed.
+async function verifySuperAdmin(supabase) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  return profile?.role === ROLES.SUPER_ADMIN ? user : null
+}
+
+// ── Sign Up ───────────────────────────────────────────────────────────────────
 export async function signUp(formData) {
   const supabase = await createClient()
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email: formData.email,
     password: formData.password,
     options: {
@@ -18,14 +44,14 @@ export async function signUp(formData) {
 
   if (error) return { error: error.message }
 
-  
- 
-
+  if (data.user?.identities?.length === 0) {
+    return { error: 'An account with this email already exists.' }
+  }
 
   return { success: true }
 }
 
-// ── Sign In ──────────────────────────────────────────────────────────────────
+// ── Sign In ───────────────────────────────────────────────────────────────────
 export async function signIn(formData) {
   const supabase = await createClient()
 
@@ -42,21 +68,13 @@ export async function signIn(formData) {
   const next = formData.next
   const redirectTo =
     role === ROLES.SUPER_ADMIN || role === ROLES.ADMIN
-      ? next || '/admin/dashboard'
+      ? next || '/admin/dashboard/overview'
       : next || '/'
 
-  // Cookies are already set server-side by signInWithPassword above. We still
-  // return the session so the client can call supabase.auth.setSession() and
-  // sync the browser client's in-memory state immediately, without waiting
-  // for a full page reload.
-  return {
-    success: true,
-    session: data.session,
-    redirectTo,
-  }
+  return { success: true, session: data.session, redirectTo }
 }
 
-// ── Sign Out ─────────────────────────────────────────────────────────────────
+// ── Sign Out ──────────────────────────────────────────────────────────────────
 export async function signOut() {
   const supabase = await createClient()
   await supabase.auth.signOut()
@@ -64,27 +82,20 @@ export async function signOut() {
   return { success: true }
 }
 
-
-// ── Update User Role (super_admin only) ──────────────────────────────────────
+// ── Update User Role (super_admin only) ───────────────────────────────────────
 export async function updateUserRole(userId, newRole) {
-  const ALLOWED_TARGET_ROLES = [ROLES.CUSTOMER, ROLES.ADMIN]
-  if (!ALLOWED_TARGET_ROLES.includes(newRole)) {
-    return { error: 'Invalid role — use a dedicated flow to grant super_admin' }
+  const ALLOWED = [ROLES.CUSTOMER, ROLES.ADMIN]
+  if (!ALLOWED.includes(newRole)) {
+    return { error: 'Invalid role' }
   }
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
+  const caller = await verifySuperAdmin(supabase)
+  if (!caller) return { error: 'Unauthorized' }
 
-  const { data: caller } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
+  const service = getServiceClient()
 
-  if (caller?.role !== ROLES.SUPER_ADMIN) return { error: 'Unauthorized' }
-
-  const { data: target } = await supabase
+  const { data: target } = await service
     .from('profiles')
     .select('role')
     .eq('id', userId)
@@ -95,57 +106,39 @@ export async function updateUserRole(userId, newRole) {
     return { error: 'Cannot change a super admin role' }
   }
 
-  const { data: updated, error } = await supabase
+  const { data: updated, error } = await service
     .from('profiles')
     .update({ role: newRole })
     .eq('id', userId)
     .select()
 
   if (error) return { error: error.message }
-  if (!updated || updated.length === 0) {
-    return { error: 'Update failed — no matching profile was updated' }
-  }
+  if (!updated?.length) return { error: 'Update failed' }
 
-  revalidatePath('/admin/users')
+  revalidatePath('/admin/customers')
   return { success: true }
 }
 
-
+// ── Create User (super_admin only) ────────────────────────────────────────────
 export async function createAdmin(formData) {
-  const { createClient: createSupabase } = await import('@supabase/supabase-js')
-
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
+  const caller = await verifySuperAdmin(supabase)
+  if (!caller) return { error: 'Unauthorized' }
 
-  const { data: caller } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (caller?.role !== ROLES.SUPER_ADMIN) return { error: 'Unauthorized' }
-
-  // Validate role — only these two are creatable from this form
   const targetRole = formData.role === ROLES.ADMIN ? ROLES.ADMIN : ROLES.CUSTOMER
-  
-  const adminSupabase = createSupabase(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  )
+  const service = getServiceClient()
 
-  const { data, error } = await adminSupabase.auth.admin.createUser({
+  const { data, error } = await service.auth.admin.createUser({
     email: formData.email,
     password: formData.password,
     email_confirm: true,
-    user_metadata: { full_name: formData.fullName }
+    user_metadata: { full_name: formData.fullName, phone: formData.phone }
   })
 
   if (error) return { error: error.message }
 
   if (data.user) {
-    const { error: updateError } = await supabase
+    const { error: updateError } = await service
       .from('profiles')
       .update({ role: targetRole })
       .eq('id', data.user.id)

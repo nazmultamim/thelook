@@ -35,7 +35,9 @@ export default function ProfileDropdown({ onNavigateLogin, onNavigateSignup }) {
     const timerRef = useRef(null);
     const router = useRouter();
 
-    const { user, setSession, isLoggedIn, isAdmin, isSuperAdmin } = useAuth();
+    const { user, setSession, isLoggedIn, isAdmin, isSuperAdmin, loading } = useAuth();
+
+    if (loading) return null;
 
     const menuItems = [
         {
@@ -106,18 +108,18 @@ export default function ProfileDropdown({ onNavigateLogin, onNavigateSignup }) {
                         {/* Menu */}
                         <div className="py-1.5">
                             {menuItems
-                            .filter(item => !(isAdmin && ["My Orders", "Track Order"].includes(item.label)))
-                            .map(({ icon: Icon, label, href }) => (
-                                <Link
-                                    key={label}
-                                    href={href}
-                                    className="flex items-center gap-3 px-5 py-2.5 no-underline text-[#3d2410] text-[13.5px] font-medium group hover:bg-[#fdf0e6] transition-colors"
-                                >
-                                    <Icon size={15} className="text-[#b8a090] group-hover:text-[#d97845] transition-colors shrink-0" />
-                                    <span className="flex-1">{label}</span>
-                                    <ChevronRight size={13} className="text-[#d4c4b8] group-hover:text-[#d97845] transition-colors" />
-                                </Link>
-                            ))}
+                                .filter(item => !(isAdmin && ["My Orders", "Track Order"].includes(item.label)))
+                                .map(({ icon: Icon, label, href }) => (
+                                    <Link
+                                        key={label}
+                                        href={href}
+                                        className="flex items-center gap-3 px-5 py-2.5 no-underline text-[#3d2410] text-[13.5px] font-medium group hover:bg-[#fdf0e6] transition-colors"
+                                    >
+                                        <Icon size={15} className="text-[#b8a090] group-hover:text-[#d97845] transition-colors shrink-0" />
+                                        <span className="flex-1">{label}</span>
+                                        <ChevronRight size={13} className="text-[#d4c4b8] group-hover:text-[#d97845] transition-colors" />
+                                    </Link>
+                                ))}
                         </div>
 
                         {/* Logout */}

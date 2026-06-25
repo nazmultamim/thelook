@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Sidebar from "@/components/admin/Sidebar";
 import TopBar from "@/components/admin/TopBar";
+import { useAdminStore } from '@/store/adminStore'
+import { getProductCount } from '@/app/actions/products'
 
 const SECTION_LABELS = {
   dashboard: "Dashboard",
@@ -48,6 +50,18 @@ export default function AdminDashboardShell({ children, onGoToShop }) {
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
+
+  useEffect(() => {
+    const loadCount = async () => {
+      const count = await getProductCount()
+
+      useAdminStore
+        .getState()
+        .setProductTotal(count)
+    }
+
+    loadCount()
+  }, [])
 
   const handleToggleSidebar = () => {
     if (isMobile) {

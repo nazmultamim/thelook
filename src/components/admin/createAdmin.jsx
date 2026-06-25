@@ -16,20 +16,20 @@ function InputField({ label, type = 'text', icon: Icon, value, onChange, placeho
   return (
     <div className="relative">
       <div className={`flex items-center gap-3 border rounded-xl px-4 py-3.5 bg-white transition-all duration-200 ${error
-          ? 'border-red-400 shadow-[0_0_0_3px_rgba(239,68,68,0.12)]'
-          : focused
-            ? 'border-[#d97845] shadow-[0_0_0_3px_rgba(217,120,69,0.14)]'
-            : hasValue
-              ? 'border-[#c8a990]'
-              : 'border-[#e8d9cc]'
+        ? 'border-red-400 shadow-[0_0_0_3px_rgba(239,68,68,0.12)]'
+        : focused
+          ? 'border-[#d97845] shadow-[0_0_0_3px_rgba(217,120,69,0.14)]'
+          : hasValue
+            ? 'border-[#c8a990]'
+            : 'border-[#e8d9cc]'
         }`}>
         {Icon && (
           <Icon size={17} className={`shrink-0 transition-colors duration-200 ${focused ? 'text-[#d97845]' : 'text-[#b8a090]'}`} />
         )}
         <div className="flex-1 relative">
           <label className={`absolute left-0 transition-all duration-200 pointer-events-none select-none ${focused || hasValue
-              ? 'text-[10px] top-0 text-[#d97845] font-semibold tracking-wide'
-              : 'text-sm top-[9px] text-[#b8a090]'
+            ? 'text-[10px] top-0 text-[#d97845] font-semibold tracking-wide'
+            : 'text-sm top-[9px] text-[#b8a090]'
             }`}>
             {label}
           </label>
@@ -168,6 +168,7 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }) {
       const result = await createAdmin({
         fullName: form.fullName,
         email: form.email,
+        phone: form.phone,
         password: form.password,
         role: form.role,
       });
@@ -229,7 +230,7 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }) {
 
             <InputField label="Full Name" icon={User} value={form.fullName} onChange={set('fullName')} placeholder="Jane Doe" error={errors.fullName} />
             <InputField label="Email Address" type="email" icon={Mail} value={form.email} onChange={set('email')} placeholder="jane@example.com" error={errors.email} />
-            <InputField label="Phone" type="tel" icon={Mail} value={form.phone} onChange={handlePhoneChange} placeholder="01877585649" error={errors.phone} />
+            <InputField label="Phone" type="tel" icon={Mail} value={form.phone} onChange={handlePhoneChange} placeholder="+880 1234 567890" error={errors.phone} />
             <PasswordField label="Password" value={form.password} onChange={set('password')} error={errors.password} />
             <RoleSelector value={form.role} onChange={(role) => setForm(p => ({ ...p, role }))} />
 
